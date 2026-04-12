@@ -21,6 +21,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, font_manager
+from .design_control import BlockEditorWindow
 import control as ct
 import numpy as np
 import copy
@@ -121,6 +122,7 @@ class MainWindow(QMainWindow):
         results_large_layout.addWidget(self.tf_text_tab)
 
         self.main_tabs.addTab(self.tab_results_large, "Resultados (TFs / Controle)")
+
 
     # ==========================================================
     # PAINEL DE ABAS (Matrizes / Parâmetros / Simulação)
@@ -1011,6 +1013,9 @@ class MainWindow(QMainWindow):
         self.convergency_button.clicked.connect(self.generate_convergency_display)
         self.convergency_button.setVisible(False)
 
+        self.btn_design_control = QPushButton("Abrir Editor de Controle")
+        self.btn_design_control.clicked.connect(self.open_block_editor)
+
         # inicializa
         self.update_method_box()
 
@@ -1026,6 +1031,7 @@ class MainWindow(QMainWindow):
         layout.addRow(self.control_button)
         layout.addRow(self.bode_control_button)
         layout.addRow(self.convergency_button)
+        layout.addRow(self.btn_design_control)
 
         widget.setLayout(layout)
 
@@ -1436,6 +1442,10 @@ class MainWindow(QMainWindow):
             poles.append(complex(p))
 
         return np.array(poles, dtype=complex)
+    
+    def open_block_editor(self):
+        self.editor = BlockEditorWindow()
+        self.editor.show()
 
 
 
