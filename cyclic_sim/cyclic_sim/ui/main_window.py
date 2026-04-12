@@ -21,7 +21,6 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 import matplotlib.pyplot as plt
 from matplotlib import rcParams, font_manager
-import matplotlib
 import control as ct
 import numpy as np
 import copy
@@ -601,9 +600,9 @@ class MainWindow(QMainWindow):
 
         if hasattr(self, "figure"):
 
-            figure_copy = copy.deepcopy(self.figure)
+            figure_copy = self.figure
 
-            self.plot_editor_window = PlotEditorWindow(figure_copy)
+            self.plot_editor_window = PlotEditorWindow(figure_copy, self.results, self.t, self.output_results_selector.currentIndex())
             self.plot_editor_window.show()
         else: Warning ("Deve-se plotar primeiro o gráfico")  
 
@@ -845,7 +844,7 @@ class MainWindow(QMainWindow):
             self.group_layout.addRow(f"Saída {i+1}:", line)
 
         # ==========================================
-        # SCROLL AREA (expansível)
+        # SCROLL AREA 
         # ==========================================
         self.scroll = QScrollArea()
         self.scroll.setWidgetResizable(True)

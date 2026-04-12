@@ -1,7 +1,7 @@
 from PyQt6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QPushButton, QLabel, QLineEdit, QFileDialog,
-    QMessageBox, QApplication
+    QMessageBox, QApplication, QComboBox
 )
 from PyQt6.QtGui import QImage
 from PyQt6.QtWidgets import QTabWidget, QFormLayout
@@ -14,7 +14,7 @@ import io
 
 
 class PlotEditorWindow(QMainWindow):
-    def __init__(self, figure):
+    def __init__(self, figure, results, t, id_orig):
         super().__init__()
         self.setWindowTitle("Editor de Gráfico")
         self.setMinimumSize(1100, 750)
@@ -33,6 +33,10 @@ class PlotEditorWindow(QMainWindow):
 
         self.figure = figure
         self.canvas = FigureCanvas(self.figure)
+        self.results = results
+        self.t = t
+        self.id_orig = id_orig
+        self.added_lines = {}  # controle das curvas adicionadas
 
         # ===== Central =====
         central_widget = QWidget()
@@ -103,6 +107,36 @@ class PlotEditorWindow(QMainWindow):
         style_layout.addRow("Fonte legenda:", self.legend_fontsize)
 
         tabs.addTab(tab_style, "Curvas & Estilo")
+        # =========================
+        # ABA 3 — ADICIONAR CURVAS
+        # =========================
+        tab_add = QWidget()
+        add_layout = QFormLayout()
+        tab_add.setLayout(add_layout)
+
+        # seletor de variáveis
+        self.output_selector = QComboBox()
+        self.output_selector.clear()
+
+        n_outputs = self.results.shape[0]  # sempre (p, N)
+
+        for i in range(n_outputs):
+            self.output_selector.addItem(f"Saída {i+1}")
+
+        self.added_lines.clear()
+        add_layout.addRow("Variável:", self.output_selector)
+
+        # botão adicionar
+        add_btn = QPushButton("Adicionar curva")
+        add_btn.clicked.connect(self.add_curve)
+        add_layout.addRow(add_btn)
+
+        # botão remover
+        remove_btn = QPushButton("Remover curva selecionada")
+        remove_btn.clicked.connect(self.remove_curve)
+        add_layout.addRow(remove_btn)
+
+        tabs.addTab(tab_add, "Adicionar/Remover")
 
         control_layout = QVBoxLayout()
         control_layout.addWidget(tabs)
@@ -129,6 +163,10 @@ class PlotEditorWindow(QMainWindow):
         main_layout.addWidget(self.canvas, 4)
 
         self.populate_current_values()
+        ax = self.figure.axes[0]
+
+        for line in ax.get_lines():
+            line._id = self.id_orig
 
     # ==============================
     # Preenche campos com valores atuais
@@ -267,3 +305,40 @@ class PlotEditorWindow(QMainWindow):
         clipboard.setImage(image)
 
         QMessageBox.information(self, "Copiado", "Figura copiada para a área de transferência.")
+
+    def add_curve(self):
+        try:
+            index = self.output_selector.currentIndex()
+            ax = self.figure.axes[0]
+
+            # evita duplicar por ID
+            for line in ax.get_lines():
+                if hasattr(line, "_id") and line._id == index:
+                    return
+
+            y = self.results[index, :]
+            x = self.t
+
+            line, = ax.plot(x, y, label=f"Saída {index+1}")
+            line._id = index  
+
+            ax.legend()
+            self.canvas.draw()
+
+        except Exception as e:
+            QMessageBox.warning(self, "Erro ao adicionar", str(e))
+            
+    def remove_curve(self):
+        try:
+            index = self.output_selector.currentIndex()
+            ax = self.figure.axes[0]
+
+            for line in ax.get_lines()[:]:
+                if hasattr(line, "_id") and line._id == index:
+                    line.remove()
+
+            ax.legend()
+            self.canvas.draw()
+
+        except Exception as e:
+            QMessageBox.warning(self, "Erro ao remover", str(e))
