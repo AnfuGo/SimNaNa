@@ -1,8 +1,15 @@
 import control as ct
 import matlab.engine
 import matlab
+import sys
+import os
 import numpy as np
 from scipy.signal import place_poles
+
+def get_path(filename):
+    if hasattr(sys, '_MEIPASS'):
+        return os.path.join(sys._MEIPASS, filename)
+    return os.path.join(os.path.abspath("."), filename)
 
 def run_controller_design(sys_tf, ctrl_type="PI", method="pidtune", wc=None, polos_desejados=None, Main_Window=None):
     """
@@ -35,13 +42,28 @@ def run_controller_design(sys_tf, ctrl_type="PI", method="pidtune", wc=None, pol
                 print("SEM INTEGRADOR")
                 Main_Window.integrator = 0
                 K = ct.acker(Main_Window.Ap, Bp, polos_desejados)
+                Main_Window.poles = np.linalg.eigvals(Main_Window.Ap - Bp @ np.atleast_2d(K))
             else:
                 print("COM INTEGRADOR")
                 Main_Window.integrator = 1
                 K = ct.acker(Main_Window.A_aug, Main_Window.B_aug, polos_desejados)
+                Main_Window.poles = np.linalg.eigvals(Main_Window.A_aug - Main_Window.B_aug @ np.atleast_2d(K))
+            print("acker\n")
         elif method == "place":
-            K = ct.place(Main_Window.A_aug, Main_Window.B_aug, polos_desejados)
-            Main_Window.poles = np.linalg.eigvals(Main_Window.A_aug - Main_Window.B_aug @ K)
+            #K = ct.place(Main_Window.A_aug, Main_Window.B_aug, polos_desejados)
+            #Main_Window.poles = np.linalg.eigvals(Main_Window.A_aug - Main_Window.B_aug @ K)
+            if (len(polos_desejados)) == Main_Window.Ap.shape[0]:
+                print("SEM INTEGRADOR")
+                Bp = Main_Window.Bp[:,1:2]
+                Main_Window.integrator = 0
+                K = ct.place(Main_Window.Ap, Bp, polos_desejados)
+                Main_Window.poles = np.linalg.eigvals(Main_Window.Ap - Bp @ K)
+            else:
+                print("COM INTEGRADOR")
+                Main_Window.integrator = 1
+                K = ct.place(Main_Window.A_aug, Main_Window.B_aug, polos_desejados)
+                Main_Window.poles = np.linalg.eigvals(Main_Window.A_aug - Main_Window.B_aug @ K)
+            print("place\n")
             #result_max = place_poles(A, B, polos_desejados)
             #K = result_max.gain_matrix
         else:
@@ -93,7 +115,13 @@ def run_controller_design(sys_tf, ctrl_type="PI", method="pidtune", wc=None, pol
     # Inicia MATLAB
     # ============================
 
+    script_path = get_path("tuneControllers.m")
+    if not os.path.exists(script_path):
+        raise FileNotFoundError(f"{script_path} não encontrado")
+    script_dir = os.path.dirname(script_path)
+
     eng = matlab.engine.start_matlab()
+    eng.addpath(script_dir, nargout=0)
 
     try:
         result = eng.tuneControllers(
